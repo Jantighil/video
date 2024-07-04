@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic YouTube Video Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(120deg, #f6d365 0%, #fda085 100%);
+            color: #fff;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            padding: 50px;
+        }
+        .video-wrapper {
+            position: relative;
+            padding-bottom: 56.25%;
+            height: 0;
+            overflow: hidden;
+            max-width: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 10px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.25);
+        }
+        .video-wrapper iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+        }
+        #adminPanel {
+            display: none;
+            margin: 20px 0;
+        }
+        input[type="text"], input[type="password"] {
+            padding: 10px;
+            font-size: 1rem;
+            width: 80%;
+            max-width: 500px;
+            margin: 20px 0;
+            border-radius: 5px;
+            border: none;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 1rem;
+            border: none;
+            border-radius: 5px;
+            background: #ff7e5f;
+            color: #fff;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            transition: background 0.3s ease;
+        }
+        button:hover {
+            background: #feb47b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Cyber Security Awareness Video</h1>
+        <div class="video-wrapper" id="videoContainer">
+            <iframe id="videoFrame" src="" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+        </div>
+        <div id="adminPanel" style="display: none;">
+            <input type="text" id="youtubeLink" placeholder="Enter YouTube link here">
+            <button onclick="loadVideo()">Load Video</button>
+            <button onclick="deleteVideo()">Delete Video</button>
+        </div>
+        <button onclick="authenticateAdmin()">Admin Login</button>
+        <button onclick="showAddAdminPanel()">Add Admin</button>
+        <div id="addAdminPanel" style="display: none;">
+            <input type="password" id="mainAdminPassword" placeholder="Main Admin Password">
+            <input type="text" id="newAdminUsername" placeholder="New Admin Username">
+            <input type="password" id="newAdminPassword" placeholder="New Admin Password">
+            <button onclick="addAdmin()">Add Admin</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            fetch('http://localhost:3000/video-link')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('videoFrame').src = data.videoLink;
+                });
+        });
+
+        async function authenticateAdmin() {
+            const username = prompt("Enter admin username:");
+            const password = prompt("Enter admin password:");
+
+            try {
+                const response = await fetch(`http://localhost:3000/admin-password?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    document.getElementById('adminPanel').style.display = 'block';
+                } else {
+                    alert(data.message || "Authentication failed!");
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error during authentication');
+            }
+        }
+
+        async function loadVideo() {
+            const youtubeLink = document.getElementById('youtubeLink').value;
+            let videoId = youtubeLink.split('v=')[1];
+            const ampersandPosition = videoId.indexOf('&');
+            if (ampersandPosition !== -1) {
+                videoId = videoId.substring(0, ampersandPosition);
+            }
+            const newVideoLink = `https://www.youtube.com/embed/${videoId}`;
+
+            const username = prompt("Re-enter admin username:");
+            const password = prompt("Re-enter admin password:");
+
+            try {
+                const response = await fetch('http://localhost:3000/video-link', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username,
+                        password,
+                        newVideoLink
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    document.getElementById('videoFrame').src = newVideoLink;
+                } else {
+                    alert(result.message || "Failed to update video link!");
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error during video link update');
+            }
+        }
+
+        async function deleteVideo() {
+            const username = prompt("Re-enter admin username:");
+            const password = prompt("Re-enter admin password:");
+
+            try {
+                const response = await fetch('http://localhost:3000/video-link', {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username,
+                        password
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    document.getElementById('videoFrame').src = '';
+                } else {
+                    alert(result.message || "Failed to delete video link!");
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error during video link deletion');
+            }
+        }
+
+        function showAddAdminPanel() {
+            document.getElementById('addAdminPanel').style.display = 'block';
+        }
+
+        async function addAdmin() {
+            const mainAdminPassword = document.getElementById('mainAdminPassword').value;
+            const newAdminUsername = document.getElementById('newAdminUsername').value;
+            const newAdminPassword = document.getElementById('newAdminPassword').value;
+
+            try {
+                const response = await fetch('http://localhost:3000/add-admin', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        mainAdminPassword,
+                        username: newAdminUsername,
+                        password: newAdminPassword
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    alert("New admin added successfully!");
+                    document.getElementById('addAdminPanel').style.display = 'none';
+                } else {
+                    alert(result.message || "Failed to add new admin!");
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error during adding new admin');
+            }
+        }
+    </script>
+</body>
+</html>
+
+
