@@ -26,6 +26,7 @@ app.get('/video-link', async (req, res) => {
     const result = await client.query('SELECT link FROM video_link LIMIT 1');
     res.json({ videoLink: result.rows[0] ? result.rows[0].link : '' });
   } catch (error) {
+    console.error('Error fetching video link:', error);
     res.status(500).json({ success: false, message: "Error fetching video link" });
   } finally {
     client.release();
@@ -57,6 +58,7 @@ app.post('/video-link', async (req, res) => {
     );
     res.json({ success: true });
   } catch (error) {
+    console.error('Error updating video link:', error);
     res.status(500).json({ success: false, message: "Error updating video link" });
   } finally {
     client.release();
@@ -85,6 +87,7 @@ app.delete('/video-link', async (req, res) => {
     await client.query('DELETE FROM video_link WHERE id = 1');
     res.json({ success: true });
   } catch (error) {
+    console.error('Error deleting video link:', error);
     res.status(500).json({ success: false, message: "Error deleting video link" });
   } finally {
     client.release();
@@ -112,6 +115,7 @@ app.get('/admin-password', async (req, res) => {
 
     res.json({ success: true });
   } catch (error) {
+    console.error('Error authenticating admin:', error);
     res.status(500).json({ success: false, message: "Error authenticating admin" });
   } finally {
     client.release();
@@ -141,6 +145,7 @@ app.post('/add-admin', async (req, res) => {
     await client.query('INSERT INTO admins (username, password) VALUES ($1, $2)', [username, hashedPassword]);
     res.json({ success: true });
   } catch (error) {
+    console.error('Error adding new admin:', error);
     res.status(500).json({ success: false, message: "Error adding new admin" });
   } finally {
     client.release();
