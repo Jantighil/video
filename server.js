@@ -21,7 +21,7 @@ app.use(cors());
 // Fetch video link
 app.get('/video-link', async (req, res) => {
     try {
-        const result = await db.query('SELECT link FROM video_link LIMIT 1');
+        const result = await db.select('link').from('video_link').limit(1);
         res.json({ videoLink: result[0] ? result[0].link : '' });
     } catch (error) {
         console.error('Error fetching video link:', error);
@@ -33,7 +33,7 @@ app.get('/video-link', async (req, res) => {
 app.post('/video-link', async (req, res) => {
     const { username, password, newVideoLink } = req.body;
     try {
-        const result = await db.query('SELECT password FROM admins WHERE username = $1', [username]);
+        const result = await db.select('password').from('admins').where('username', username);
         if (result.length === 0) {
             return res.status(400).json({ success: false, message: 'Admin not found' });
         }
@@ -45,10 +45,7 @@ app.post('/video-link', async (req, res) => {
             return res.status(400).json({ success: false, message: 'Incorrect password' });
         }
 
-        await db.query(
-            'INSERT INTO video_link (id, link) VALUES (1, $1) ON CONFLICT (id) DO UPDATE SET link = $1',
-            [newVideoLink]
-        );
+        await db.insert('video_link').values({ id: 1, link: newVideoLink }).onConflict('id').merge();
         res.json({ success: true });
     } catch (error) {
         console.error('Error updating video link:', error);
@@ -59,10 +56,10 @@ app.post('/video-link', async (req, res) => {
 // Set up main admin (runs once to insert default admin if not exists)
 async function setup() {
     try {
-        const result = await db.query('SELECT * FROM admins WHERE username = $1', ['mainadmin']);
+        const result = await db.select('*').from('admins').where('username', 'mainadmin');
         if (result.length === 0) {
             const hashedPassword = await bcrypt.hash(process.env.MAIN_ADMIN_PASSWORD, 10);
-            await db.query('INSERT INTO admins (username, password) VALUES ($1, $2)', ['mainadmin', hashedPassword]);
+            await db.insert('admins').values({ username: 'mainadmin', password: hashedPassword });
             console.log('Main admin added successfully!');
         } else {
             console.log('Main admin already exists.');
@@ -76,7 +73,7 @@ async function setup() {
 app.post('/add-admin', async (req, res) => {
     const { mainAdminPassword, username, password } = req.body;
     try {
-        const result = await db.query('SELECT password FROM admins WHERE username = $1', ['mainadmin']);
+        const result = await db.select('password').from('admins').where('username', 'mainadmin');
         if (result.length === 0) {
             return res.status(400).json({ success: false, message: 'Main admin not found' });
         }
@@ -89,7 +86,7 @@ app.post('/add-admin', async (req, res) => {
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
-        await db.query('INSERT INTO admins (username, password) VALUES ($1, $2)', [username, hashedPassword]);
+        await db.insert('admins').values({ username, password: hashedPassword });
         res.json({ success: true });
     } catch (error) {
         console.error('Error adding new admin:', error);
