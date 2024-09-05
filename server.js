@@ -11,8 +11,11 @@ const app = express();
 app.use(bodyParser.json());
 app.use(cors());
 
-// Initialize PostgreSQL connection using the Supabase connection URL
-const sql = postgres(process.env.DATABASE_URL, { ssl: 'require', prepare: false });
+// Use PostgreSQL connection with SSL enabled
+const sql = postgres(process.env.DATABASE_URL, {
+    ssl: 'require', // Ensure SSL mode is enabled
+    prepare: false  // Disable prepare as it's not supported for Transaction pool mode
+});
 
 // Fetch video link
 app.get('/video-link', async (req, res) => {
@@ -98,3 +101,4 @@ app.listen(PORT, () => {
 
 // Call the setup function
 setup().catch((err) => console.error(err));
+
