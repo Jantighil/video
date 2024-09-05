@@ -8,8 +8,13 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 const app = express();
+
+// Updated Pool configuration with SSL
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false,
+  },
 });
 
 app.use(bodyParser.json());
@@ -46,7 +51,10 @@ app.post('/video-link', async (req, res) => {
       return;
     }
 
-    await client.query('INSERT INTO video_link (link) VALUES ($1) ON CONFLICT (id) DO UPDATE SET link = $1', [newVideoLink]);
+    await client.query(
+      'INSERT INTO video_link (id, link) VALUES (1, $1) ON CONFLICT (id) DO UPDATE SET link = $1',
+      [newVideoLink]
+    );
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ success: false, message: "Error updating video link" });
@@ -164,4 +172,3 @@ async function setup() {
 }
 
 setup().catch((err) => console.error(err));
-
