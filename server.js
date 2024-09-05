@@ -3,18 +3,16 @@ import bodyParser from 'body-parser';
 import bcrypt from 'bcrypt';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import postgres from 'postgres';  // Import postgres for raw queries
+import postgres from 'postgres';
 
 dotenv.config();
 
 const app = express();
-const connectionString = process.env.DATABASE_URL;
-
-// Initialize PostgreSQL client using postgres.js
-const sql = postgres(connectionString, { prepare: false });
-
 app.use(bodyParser.json());
 app.use(cors());
+
+// Initialize PostgreSQL connection using the Supabase connection URL
+const sql = postgres(process.env.DATABASE_URL, { ssl: 'require', prepare: false });
 
 // Fetch video link
 app.get('/video-link', async (req, res) => {
