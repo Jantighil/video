@@ -3,17 +3,15 @@ import bodyParser from 'body-parser';
 import bcrypt from 'bcrypt';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { drizzle } from 'drizzle-orm/postgres-js';
-import postgres from 'postgres';
+import postgres from 'postgres';  // Import postgres for raw queries
 
 dotenv.config();
 
 const app = express();
 const connectionString = process.env.DATABASE_URL;
 
-// Initialize PostgreSQL client and Drizzle ORM
-const client = postgres(connectionString, { prepare: false });
-const db = drizzle(client);
+// Initialize PostgreSQL client using postgres.js
+const sql = postgres(connectionString, { prepare: false });
 
 app.use(bodyParser.json());
 app.use(cors());
@@ -21,7 +19,7 @@ app.use(cors());
 // Fetch video link
 app.get('/video-link', async (req, res) => {
     try {
-        const result = await db.select('link').from('video_link').limit(1);
+        const result = await sql`SELECT link FROM video_link LIMIT 1`;
         res.json({ videoLink: result[0] ? result[0].link : '' });
     } catch (error) {
         console.error('Error fetching video link:', error);
@@ -33,7 +31,7 @@ app.get('/video-link', async (req, res) => {
 app.post('/video-link', async (req, res) => {
     const { username, password, newVideoLink } = req.body;
     try {
-        const result = await db.select('password').from('admins').where('username', username);
+        const result = await sql`SELECT password FROM admins WHERE username = ${username}`;
         if (result.length === 0) {
             return res.status(400).json({ success: false, message: 'Admin not found' });
         }
@@ -45,7 +43,7 @@ app.post('/video-link', async (req, res) => {
             return res.status(400).json({ success: false, message: 'Incorrect password' });
         }
 
-        await db.insert('video_link').values({ id: 1, link: newVideoLink }).onConflict('id').merge();
+        await sql`INSERT INTO video_link (id, link) VALUES (1, ${newVideoLink}) ON CONFLICT (id) DO UPDATE SET link = ${newVideoLink}`;
         res.json({ success: true });
     } catch (error) {
         console.error('Error updating video link:', error);
@@ -56,10 +54,10 @@ app.post('/video-link', async (req, res) => {
 // Set up main admin (runs once to insert default admin if not exists)
 async function setup() {
     try {
-        const result = await db.select('*').from('admins').where('username', 'mainadmin');
+        const result = await sql`SELECT * FROM admins WHERE username = 'mainadmin'`;
         if (result.length === 0) {
             const hashedPassword = await bcrypt.hash(process.env.MAIN_ADMIN_PASSWORD, 10);
-            await db.insert('admins').values({ username: 'mainadmin', password: hashedPassword });
+            await sql`INSERT INTO admins (username, password) VALUES ('mainadmin', ${hashedPassword})`;
             console.log('Main admin added successfully!');
         } else {
             console.log('Main admin already exists.');
@@ -73,7 +71,7 @@ async function setup() {
 app.post('/add-admin', async (req, res) => {
     const { mainAdminPassword, username, password } = req.body;
     try {
-        const result = await db.select('password').from('admins').where('username', 'mainadmin');
+        const result = await sql`SELECT password FROM admins WHERE username = 'mainadmin'`;
         if (result.length === 0) {
             return res.status(400).json({ success: false, message: 'Main admin not found' });
         }
@@ -86,7 +84,7 @@ app.post('/add-admin', async (req, res) => {
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
-        await db.insert('admins').values({ username, password: hashedPassword });
+        await sql`INSERT INTO admins (username, password) VALUES (${username}, ${hashedPassword})`;
         res.json({ success: true });
     } catch (error) {
         console.error('Error adding new admin:', error);
