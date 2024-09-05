@@ -12,7 +12,7 @@ const app = express();
 
 // Use Supabase connection string for the database
 const pool = new Pool({
-  connectionString: process.env.SUPABASE_DATABASE_URL, // Set this in your .env file
+  connectionString: process.env.SUPABASE_DATABASE_URL,
   ssl: {
     rejectUnauthorized: false,
   },
