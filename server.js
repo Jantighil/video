@@ -5,13 +5,14 @@ const { Pool } = require('pg');
 const cors = require('cors');
 const dotenv = require('dotenv');
 
+// Load environment variables
 dotenv.config();
 
 const app = express();
 
-// Updated Pool configuration with SSL
+// Use Supabase connection string for the database
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: process.env.SUPABASE_DATABASE_URL, // Set this in your .env file
   ssl: {
     rejectUnauthorized: false,
   },
@@ -20,6 +21,7 @@ const pool = new Pool({
 app.use(bodyParser.json());
 app.use(cors());
 
+// Fetch video link
 app.get('/video-link', async (req, res) => {
   const client = await pool.connect();
   try {
@@ -27,29 +29,27 @@ app.get('/video-link', async (req, res) => {
     res.json({ videoLink: result.rows[0] ? result.rows[0].link : '' });
   } catch (error) {
     console.error('Error fetching video link:', error);
-    res.status(500).json({ success: false, message: "Error fetching video link" });
+    res.status(500).json({ success: false, message: 'Error fetching video link' });
   } finally {
     client.release();
   }
 });
 
+// Update video link with admin authentication
 app.post('/video-link', async (req, res) => {
   const { username, password, newVideoLink } = req.body;
   const client = await pool.connect();
-
   try {
     const result = await client.query('SELECT password FROM admins WHERE username = $1', [username]);
     if (result.rows.length === 0) {
-      res.status(400).json({ success: false, message: "Admin not found" });
-      return;
+      return res.status(400).json({ success: false, message: 'Admin not found' });
     }
 
     const hashedPassword = result.rows[0].password;
     const isPasswordMatch = await bcrypt.compare(password, hashedPassword);
 
     if (!isPasswordMatch) {
-      res.status(400).json({ success: false, message: "Incorrect password" });
-      return;
+      return res.status(400).json({ success: false, message: 'Incorrect password' });
     }
 
     await client.query(
@@ -59,107 +59,15 @@ app.post('/video-link', async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     console.error('Error updating video link:', error);
-    res.status(500).json({ success: false, message: "Error updating video link" });
+    res.status(500).json({ success: false, message: 'Error updating video link' });
   } finally {
     client.release();
   }
 });
 
-app.delete('/video-link', async (req, res) => {
-  const { username, password } = req.body;
-  const client = await pool.connect();
-
-  try {
-    const result = await client.query('SELECT password FROM admins WHERE username = $1', [username]);
-    if (result.rows.length === 0) {
-      res.status(400).json({ success: false, message: "Admin not found" });
-      return;
-    }
-
-    const hashedPassword = result.rows[0].password;
-    const isPasswordMatch = await bcrypt.compare(password, hashedPassword);
-
-    if (!isPasswordMatch) {
-      res.status(400).json({ success: false, message: "Incorrect password" });
-      return;
-    }
-
-    await client.query('DELETE FROM video_link WHERE id = 1');
-    res.json({ success: true });
-  } catch (error) {
-    console.error('Error deleting video link:', error);
-    res.status(500).json({ success: false, message: "Error deleting video link" });
-  } finally {
-    client.release();
-  }
-});
-
-app.get('/admin-password', async (req, res) => {
-  const { username, password } = req.query;
-  const client = await pool.connect();
-
-  try {
-    const result = await client.query('SELECT password FROM admins WHERE username = $1', [username]);
-    if (result.rows.length === 0) {
-      res.status(400).json({ success: false, message: "Admin not found" });
-      return;
-    }
-
-    const hashedPassword = result.rows[0].password;
-    const isPasswordMatch = await bcrypt.compare(password, hashedPassword);
-
-    if (!isPasswordMatch) {
-      res.status(400).json({ success: false, message: "Incorrect password" });
-      return;
-    }
-
-    res.json({ success: true });
-  } catch (error) {
-    console.error('Error authenticating admin:', error);
-    res.status(500).json({ success: false, message: "Error authenticating admin" });
-  } finally {
-    client.release();
-  }
-});
-
-app.post('/add-admin', async (req, res) => {
-  const { mainAdminPassword, username, password } = req.body;
-  const client = await pool.connect();
-
-  try {
-    const result = await client.query('SELECT password FROM admins WHERE username = $1', ['mainadmin']);
-    if (result.rows.length === 0) {
-      res.status(400).json({ success: false, message: "Main admin not found" });
-      return;
-    }
-
-    const hashedMainAdminPassword = result.rows[0].password;
-    const isMainAdminPasswordMatch = await bcrypt.compare(mainAdminPassword, hashedMainAdminPassword);
-
-    if (!isMainAdminPasswordMatch) {
-      res.status(400).json({ success: false, message: "Incorrect main admin password" });
-      return;
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-    await client.query('INSERT INTO admins (username, password) VALUES ($1, $2)', [username, hashedPassword]);
-    res.json({ success: true });
-  } catch (error) {
-    console.error('Error adding new admin:', error);
-    res.status(500).json({ success: false, message: "Error adding new admin" });
-  } finally {
-    client.release();
-  }
-});
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
-
+// Set up main admin (runs once to insert default admin if not exists)
 async function setup() {
   const client = await pool.connect();
-
   try {
     const result = await client.query('SELECT * FROM admins WHERE username = $1', ['mainadmin']);
     if (result.rows.length === 0) {
@@ -176,4 +84,39 @@ async function setup() {
   }
 }
 
+// Add a new admin (Only main admin can add new admins)
+app.post('/add-admin', async (req, res) => {
+  const { mainAdminPassword, username, password } = req.body;
+  const client = await pool.connect();
+  try {
+    const result = await client.query('SELECT password FROM admins WHERE username = $1', ['mainadmin']);
+    if (result.rows.length === 0) {
+      return res.status(400).json({ success: false, message: 'Main admin not found' });
+    }
+
+    const hashedMainAdminPassword = result.rows[0].password;
+    const isMainAdminPasswordMatch = await bcrypt.compare(mainAdminPassword, hashedMainAdminPassword);
+
+    if (!isMainAdminPasswordMatch) {
+      return res.status(400).json({ success: false, message: 'Incorrect main admin password' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    await client.query('INSERT INTO admins (username, password) VALUES ($1, $2)', [username, hashedPassword]);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error adding new admin:', error);
+    res.status(500).json({ success: false, message: 'Error adding new admin' });
+  } finally {
+    client.release();
+  }
+});
+
+// Initialize the server
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});
+
+// Call the setup function
 setup().catch((err) => console.error(err));
