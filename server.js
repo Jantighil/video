@@ -70,59 +70,58 @@ async function setup() {
 
 // Add a new admin (Only main admin can add new admins)
 app.post('/add-admin', async (req, res) => {
-  const { mainAdminPassword, username, password } = req.body;
-  try {
-      const result = await sql`SELECT password FROM admins WHERE username = 'mainadmin'`;
-      if (result.length === 0) {
-          return res.status(400).json({ success: false, message: 'Main admin not found' });
-      }
+    const { mainAdminPassword, username, password } = req.body;
+    try {
+        const result = await sql`SELECT password FROM admins WHERE username = 'mainadmin'`;
+        if (result.length === 0) {
+            return res.status(400).json({ success: false, message: 'Main admin not found' });
+        }
 
-      const hashedMainAdminPassword = result[0].password;
-      const isMainAdminPasswordMatch = await bcrypt.compare(mainAdminPassword, hashedMainAdminPassword);
+        const hashedMainAdminPassword = result[0].password;
+        const isMainAdminPasswordMatch = await bcrypt.compare(mainAdminPassword, hashedMainAdminPassword);
 
-      if (!isMainAdminPasswordMatch) {
-          return res.status(400).json({ success: false, message: 'Incorrect main admin password' });
-      }
+        if (!isMainAdminPasswordMatch) {
+            return res.status(400).json({ success: false, message: 'Incorrect main admin password' });
+        }
 
-      const hashedPassword = await bcrypt.hash(password, 10);
-      await sql`INSERT INTO admins (username, password) VALUES (${username}, ${hashedPassword})`;
-      res.json({ success: true });
-  } catch (error) {
-      console.error('Error adding new admin:', error);
-      res.status(500).json({ success: false, message: 'Error adding new admin' });
-  }
+        const hashedPassword = await bcrypt.hash(password, 10);
+        await sql`INSERT INTO admins (username, password) VALUES (${username}, ${hashedPassword})`;
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error adding new admin:', error);
+        res.status(500).json({ success: false, message: 'Error adding new admin' });
+    }
 });
 
 // Get admin password (used for authentication)
 app.get('/admin-password', async (req, res) => {
-  const { username, password } = req.query;
-  try {
-      if (!username || !password) {
-          return res.status(400).json({ success: false, message: 'Missing username or password' });
-      }
+    const { username, password } = req.query;
+    try {
+        if (!username || !password) {
+            return res.status(400).json({ success: false, message: 'Missing username or password' });
+        }
 
-      const result = await sql`SELECT password FROM admins WHERE username = ${username}`;
-      if (result.length === 0) {
-          return res.status(404).json({ success: false, message: 'Admin not found' });
-      }
+        const result = await sql`SELECT password FROM admins WHERE username = ${username}`;
+        if (result.length === 0) {
+            return res.status(404).json({ success: false, message: 'Admin not found' });
+        }
 
-      const hashedPassword = result[0].password;
-      const isPasswordMatch = await bcrypt.compare(password, hashedPassword);
+        const hashedPassword = result[0].password;
+        const isPasswordMatch = await bcrypt.compare(password, hashedPassword);
 
-      if (isPasswordMatch) {
-          res.json({ success: true });
-      } else {
-          res.status(400).json({ success: false, message: 'Incorrect password' });
-      }
-  } catch (error) {
-      console.error('Error fetching admin password:', error);
-      res.status(500).json({ success: false, message: 'Error fetching admin password' });
-  }
+        if (isPasswordMatch) {
+            res.json({ success: true });
+        } else {
+            res.status(400).json({ success: false, message: 'Incorrect password' });
+        }
+    } catch (error) {
+        console.error('Error fetching admin password:', error);
+        res.status(500).json({ success: false, message: 'Error fetching admin password' });
+    }
 });
 
-
 // Initialize the server
-const PORT = 10000; // Use the fixed port for Render
+const PORT = 10000; // Use the Render port
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
