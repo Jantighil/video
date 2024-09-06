@@ -17,6 +17,10 @@ const sql = postgres(process.env.DATABASE_URL, {
     prepare: false  // Disable prepare as it's not supported for Transaction pool mode
 });
 
+// Define the correct username and hashed password
+const MAIN_ADMIN_USERNAME = 'mainadmin';
+const MAIN_ADMIN_PASSWORD_HASH = process.env.MAIN_ADMIN_PASSWORD_HASH; // Store the hashed password here
+
 // Fetch video link
 app.get('/video-link', async (req, res) => {
     try {
@@ -93,31 +97,29 @@ app.post('/add-admin', async (req, res) => {
     }
 });
 
-// Main admin login endpoint
+// Login endpoint
 app.post('/login', async (req, res) => {
     const { username, password } = req.body;
 
-    if (!username || !password) {
-        return res.status(400).json({ success: false, message: 'Username and password are required' });
+    if (username !== MAIN_ADMIN_USERNAME) {
+        return res.status(400).json({ success: false, message: 'Invalid username' });
+    }
+
+    if (!password || !MAIN_ADMIN_PASSWORD_HASH) {
+        return res.status(400).json({ success: false, message: 'Password is required' });
     }
 
     try {
-        const result = await sql`SELECT password FROM admins WHERE username = ${username}`;
-        if (result.length === 0) {
-            return res.status(400).json({ success: false, message: 'Admin not found' });
+        const isPasswordMatch = await bcrypt.compare(password, MAIN_ADMIN_PASSWORD_HASH);
+
+        if (!isPasswordMatch) {
+            return res.status(400).json({ success: false, message: 'Incorrect password' });
         }
 
-        const hashedPassword = result[0].password;
-        const isPasswordMatch = await bcrypt.compare(password, hashedPassword);
-
-        if (isPasswordMatch) {
-            res.json({ success: true, message: 'Login successful' });
-        } else {
-            res.status(400).json({ success: false, message: 'Incorrect password' });
-        }
+        res.json({ success: true, message: 'Login successful' });
     } catch (error) {
-        console.error('Error during authentication:', error);
-        res.status(500).json({ success: false, message: 'Error during authentication' });
+        console.error('Error during login:', error);
+        res.status(500).json({ success: false, message: 'Server error during login' });
     }
 });
 
