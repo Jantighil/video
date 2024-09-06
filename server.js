@@ -11,17 +11,17 @@ const app = express();
 app.use(bodyParser.json());
 app.use(cors());
 
-// PostgreSQL connection (using the DATABASE_URL from the Render environment)
+// PostgreSQL connection to Supabase with SSL enabled
 const sql = postgres(process.env.DATABASE_URL, {
-    ssl: 'require', // Ensure SSL mode is enabled for secure connections
-    prepare: false, // Optional: Disable prepare as it's not supported in some pools
+    ssl: 'require', // Ensure SSL is required for the connection
+    prepare: false  // Disable prepare mode for Transaction pool mode
 });
 
 // Fetch video link
 app.get('/video-link', async (req, res) => {
     try {
         const result = await sql`SELECT link FROM video_link LIMIT 1`;
-        res.json({ videoLink: result.length > 0 ? result[0].link : '' });
+        res.json({ videoLink: result[0] ? result[0].link : '' });
     } catch (error) {
         console.error('Error fetching video link:', error);
         res.status(500).json({ success: false, message: 'Error fetching video link' });
@@ -94,10 +94,10 @@ app.post('/add-admin', async (req, res) => {
 });
 
 // Initialize the server
-const PORT = process.env.PORT || 10000;
+const PORT = 10000; // Ensure Render runs on this port
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
 
-// Call the setup function
+// Call the setup function to add the main admin
 setup().catch((err) => console.error(err));
