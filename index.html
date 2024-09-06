@@ -89,9 +89,14 @@
     </div>
 
     <script>
-     document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', () => {
     fetch('https://video-1-j54p.onrender.com/video-link')
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
         .then(data => {
             document.getElementById('videoFrame').src = data.videoLink;
         })
@@ -106,8 +111,12 @@ async function authenticateAdmin() {
 
     try {
         const response = await fetch('https://video-1-j54p.onrender.com/admin-password?username=' + encodeURIComponent(username) + '&password=' + encodeURIComponent(password));
-        const data = await response.json();
 
+        if (!response.ok) {
+            throw new Error('Authentication failed');
+        }
+
+        const data = await response.json();
         if (data.success) {
             document.getElementById('adminPanel').style.display = 'block';
         } else {
@@ -144,6 +153,10 @@ async function loadVideo() {
             })
         });
 
+        if (!response.ok) {
+            throw new Error('Failed to update video link');
+        }
+
         const result = await response.json();
         if (result.success) {
             document.getElementById('videoFrame').src = newVideoLink;
@@ -171,6 +184,10 @@ async function deleteVideo() {
                 password
             })
         });
+
+        if (!response.ok) {
+            throw new Error('Failed to delete video link');
+        }
 
         const result = await response.json();
         if (result.success) {
@@ -205,6 +222,10 @@ async function addAdmin() {
                 password: newAdminPassword
             })
         });
+
+        if (!response.ok) {
+            throw new Error('Failed to add new admin');
+        }
 
         const result = await response.json();
         if (result.success) {
