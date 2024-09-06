@@ -105,7 +105,17 @@ async function authenticateAdmin() {
     const password = prompt("Enter admin password:");
 
     try {
-        const response = await fetch('https://video-1-j54p.onrender.com/admin-password?username=' + encodeURIComponent(username) + '&password=' + encodeURIComponent(password));
+        const response = await fetch('https://video-1-j54p.onrender.com/admin-password', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                username,
+                password
+            })
+        });
+
         const data = await response.json();
 
         if (data.success) {
@@ -214,8 +224,8 @@ async function addAdmin() {
             alert(result.message || "Failed to add new admin!");
         }
     } catch (error) {
-        console.error('Error:', error);
-        alert('Error during adding new admin');
+        console.error('Error adding admin:', error);
+        alert('Error during admin addition');
     }
 }
 
