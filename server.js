@@ -93,39 +93,11 @@ app.post('/add-admin', async (req, res) => {
     }
 });
 
-// Get admin password (used for authentication)
-app.get('/admin-password', async (req, res) => {
-    const { username, password } = req.query;
-    try {
-        if (!username || !password) {
-            return res.status(400).json({ success: false, message: 'Missing username or password' });
-        }
-
-        const result = await sql`SELECT password FROM admins WHERE username = ${username}`;
-        if (result.length === 0) {
-            return res.status(404).json({ success: false, message: 'Admin not found' });
-        }
-
-        const hashedPassword = result[0].password;
-        const isPasswordMatch = await bcrypt.compare(password, hashedPassword);
-
-        if (isPasswordMatch) {
-            res.json({ success: true });
-        } else {
-            res.status(400).json({ success: false, message: 'Incorrect password' });
-        }
-    } catch (error) {
-        console.error('Error fetching admin password:', error);
-        res.status(500).json({ success: false, message: 'Error fetching admin password' });
-    }
-});
-
 // Initialize the server
-const PORT = 10000; // Use the Render port
+const PORT = process.env.PORT || 10000; // Use port 10000 for Render
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
 
 // Call the setup function
 setup().catch((err) => console.error(err));
-
