@@ -58,7 +58,7 @@ async function setup() {
         const result = await sql`SELECT * FROM admins WHERE username = 'mainadmin'`;
         if (result.length === 0) {
             const hashedPassword = await bcrypt.hash(process.env.MAIN_ADMIN_PASSWORD, 10);
-            await sql`INSERT INTO admins (username, password) VALUES ('mainadmin', ${hashed_Password})`;
+            await sql`INSERT INTO admins (username, password) VALUES ('mainadmin', ${hashedPassword})`;
             console.log('Main admin added successfully!');
         } else {
             console.log('Main admin already exists.');
