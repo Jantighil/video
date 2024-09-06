@@ -94,13 +94,10 @@ app.post('/add-admin', async (req, res) => {
 });
 
 // Initialize the server
-const PORT = process.env.PORT || 3000;
+const PORT = 10000; // Use the fixed port for Render
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
 
 // Call the setup function
 setup().catch((err) => console.error(err));
-
-
-
