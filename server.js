@@ -11,7 +11,7 @@ const app = express();
 app.use(bodyParser.json());
 app.use(cors());
 
-// Use PostgreSQL connection with SSL enabled
+// Connect to PostgreSQL using Supabase
 const sql = postgres(process.env.DATABASE_URL, {
     ssl: 'require', // Ensure SSL mode is enabled
     prepare: false  // Disable prepare as it's not supported for Transaction pool mode
