@@ -11,10 +11,10 @@ const app = express();
 app.use(bodyParser.json());
 app.use(cors());
 
-// PostgreSQL connection to Supabase with SSL enabled
+// Use PostgreSQL connection with SSL enabled
 const sql = postgres(process.env.DATABASE_URL, {
-    ssl: 'require', // Ensure SSL is required for the connection
-    prepare: false  // Disable prepare mode for Transaction pool mode
+    ssl: 'require', 
+    prepare: false 
 });
 
 // Fetch video link
@@ -52,21 +52,29 @@ app.post('/video-link', async (req, res) => {
     }
 });
 
-// Set up main admin (runs once to insert default admin if not exists)
-async function setup() {
+// Admin authentication route
+app.post('/admin-password', async (req, res) => {
+    const { username, password } = req.body;
+
     try {
-        const result = await sql`SELECT * FROM admins WHERE username = 'mainadmin'`;
+        const result = await sql`SELECT password FROM admins WHERE username = ${username}`;
         if (result.length === 0) {
-            const hashedPassword = await bcrypt.hash(process.env.MAIN_ADMIN_PASSWORD, 10);
-            await sql`INSERT INTO admins (username, password) VALUES ('mainadmin', ${hashedPassword})`;
-            console.log('Main admin added successfully!');
-        } else {
-            console.log('Main admin already exists.');
+            return res.status(400).json({ success: false, message: 'Admin not found' });
         }
+
+        const hashedPassword = result[0].password;
+        const isPasswordMatch = await bcrypt.compare(password, hashedPassword);
+
+        if (!isPasswordMatch) {
+            return res.status(400).json({ success: false, message: 'Incorrect password' });
+        }
+
+        res.json({ success: true, message: 'Authentication successful' });
     } catch (error) {
-        console.error('Error adding main admin:', error);
+        console.error('Error authenticating admin:', error);
+        res.status(500).json({ success: false, message: 'Error authenticating admin' });
     }
-}
+});
 
 // Add a new admin (Only main admin can add new admins)
 app.post('/add-admin', async (req, res) => {
@@ -93,11 +101,28 @@ app.post('/add-admin', async (req, res) => {
     }
 });
 
+// Set up main admin (runs once to insert default admin if not exists)
+async function setup() {
+    try {
+        const result = await sql`SELECT * FROM admins WHERE username = 'mainadmin'`;
+        if (result.length === 0) {
+            const hashedPassword = await bcrypt.hash(process.env.MAIN_ADMIN_PASSWORD, 10);
+            await sql`INSERT INTO admins (username, password) VALUES ('mainadmin', ${hashedPassword})`;
+            console.log('Main admin added successfully!');
+        } else {
+            console.log('Main admin already exists.');
+        }
+    } catch (error) {
+        console.error('Error adding main admin:', error);
+    }
+}
+
 // Initialize the server
-const PORT = 10000; // Ensure Render runs on this port
+const PORT = process.env.PORT || 10000; // Ensure the port is set to 10000 for Render
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
 
-// Call the setup function to add the main admin
+// Call the setup function
 setup().catch((err) => console.error(err));
+
