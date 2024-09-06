@@ -104,8 +104,13 @@ async function authenticateAdmin() {
     const username = prompt("Enter admin username:");
     const password = prompt("Enter admin password:");
 
+    if (!username || !password) {
+        alert("Username and password are required");
+        return;
+    }
+
     try {
-        const response = await fetch('https://video-1-j54p.onrender.com/admin-password', {
+        const response = await fetch('https://video-1-j54p.onrender.com/login', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -116,12 +121,14 @@ async function authenticateAdmin() {
             })
         });
 
-        const data = await response.json();
+        const result = await response.json();
 
-        if (data.success) {
+        if (result.success) {
+            alert("Login successful!");
+            // Perform actions after successful login
             document.getElementById('adminPanel').style.display = 'block';
         } else {
-            alert(data.message || "Authentication failed!");
+            alert(result.message || "Authentication failed!");
         }
     } catch (error) {
         console.error('Error:', error);
@@ -140,6 +147,11 @@ async function loadVideo() {
 
     const username = prompt("Re-enter admin username:");
     const password = prompt("Re-enter admin password:");
+
+    if (!username || !password) {
+        alert("Username and password are required");
+        return;
+    }
 
     try {
         const response = await fetch('https://video-1-j54p.onrender.com/video-link', {
@@ -169,6 +181,11 @@ async function loadVideo() {
 async function deleteVideo() {
     const username = prompt("Re-enter admin username:");
     const password = prompt("Re-enter admin password:");
+
+    if (!username || !password) {
+        alert("Username and password are required");
+        return;
+    }
 
     try {
         const response = await fetch('https://video-1-j54p.onrender.com/video-link', {
@@ -203,6 +220,11 @@ async function addAdmin() {
     const newAdminUsername = document.getElementById('newAdminUsername').value;
     const newAdminPassword = document.getElementById('newAdminPassword').value;
 
+    if (!mainAdminPassword || !newAdminUsername || !newAdminPassword) {
+        alert("All fields are required");
+        return;
+    }
+
     try {
         const response = await fetch('https://video-1-j54p.onrender.com/add-admin', {
             method: 'POST',
@@ -218,13 +240,13 @@ async function addAdmin() {
 
         const result = await response.json();
         if (result.success) {
-            alert("New admin added successfully!");
+            alert('New admin added successfully!');
             document.getElementById('addAdminPanel').style.display = 'none';
         } else {
             alert(result.message || "Failed to add new admin!");
         }
     } catch (error) {
-        console.error('Error adding admin:', error);
+        console.error('Error:', error);
         alert('Error during admin addition');
     }
 }
