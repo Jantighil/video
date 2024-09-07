@@ -26,7 +26,14 @@ const pool = new Pool({
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-app.use(cors());
+// CORS configuration
+const corsOptions = {
+  origin: 'https://video-nu-ecru.vercel.app', // Replace with your frontend URL
+  methods: ['GET', 'POST', 'DELETE'],
+  allowedHeaders: ['Content-Type']
+};
+
+app.use(cors(corsOptions));
 app.use(bodyParser.json());
 app.use(helmet());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -160,4 +167,3 @@ const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
-
