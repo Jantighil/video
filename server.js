@@ -2,41 +2,23 @@ import express from 'express';
 import bodyParser from 'body-parser';
 import bcrypt from 'bcrypt';
 import cors from 'cors';
-import helmet from 'helmet';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import pg from 'pg'; // Import the default export from CommonJS module
 import dotenv from 'dotenv';
+import { Pool } from 'pg'; // Correctly import Pool from pg
 
-const { Pool } = pg; // Destructure Pool from the default export
-
-dotenv.config(); // Load environment variables from .env file
+dotenv.config();  // Loads environment variables from .env file
 
 const app = express();
+app.use(bodyParser.json());
+app.use(cors());
+app.use(express.static('public'));
 
 // PostgreSQL Pool using Supabase connection string
 const pool = new Pool({
-  connectionString: 'postgresql://postgres.pvozibxqckbvbtgixjgm:07034984914Bread@aws-0-eu-central-1.pooler.supabase.com:6543/postgres',
-  ssl: {
-    rejectUnauthorized: false
-  }
+    connectionString: 'postgresql://postgres.pvozibxqckbvbtgixjgm:07034984914Bread@aws-0-eu-central-1.pooler.supabase.com:6543/postgres',
+    ssl: {
+        rejectUnauthorized: false
+    }
 });
-
-// Get the directory name for static files
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// CORS configuration
-const corsOptions = {
-  origin: 'https://video-nu-ecru.vercel.app', // Replace with your frontend URL
-  methods: ['GET', 'POST', 'DELETE'],
-  allowedHeaders: ['Content-Type']
-};
-
-app.use(cors(corsOptions));
-app.use(bodyParser.json());
-app.use(helmet());
-app.use(express.static(path.join(__dirname, 'public')));
 
 // Fetch the admin credentials from Supabase's mainadmin table
 async function getMainAdminCredentials() {
@@ -151,14 +133,17 @@ app.post('/add-admin', async (req, res) => {
         if (isPasswordMatch) {
             // Hash the new admin password and insert into database
             const hashedPassword = await bcrypt.hash(password, 10);
+
+            // Insert new admin into the database
             await pool.query('INSERT INTO admins (username, password) VALUES ($1, $2)', [username, hashedPassword]);
+
             res.json({ success: true, message: 'New admin added' });
         } else {
             res.status(400).json({ success: false, message: 'Main admin authentication failed' });
         }
     } catch (error) {
         console.error('Error adding new admin:', error);
-        res.status(500).json({ success: false, message: 'Error adding new admin' });
+        res.status(500).json({ success: false, message: 'Error adding new admin', error: error.message });
     }
 });
 
