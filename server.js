@@ -4,55 +4,51 @@ import bcrypt from 'bcrypt';
 import cors from 'cors';
 import helmet from 'helmet';
 import path from 'path';
-import pg from 'pg'; // Import the default export from CommonJS module
-import { fileURLToPath } from 'url'; // Import for defining __dirname in ES modules
-import { createClient } from '@supabase/supabase-js'; // Import Supabase client
-
-const { Pool } = pg; // Destructure Pool from the default export
+import pg from 'pg'; 
+import { fileURLToPath } from 'url'; 
+import { createClient } from '@supabase/supabase-js'; 
 import dotenv from 'dotenv';
 
-dotenv.config(); // Load environment variables from .env file
+dotenv.config(); 
 
+const { Pool } = pg; 
 const app = express();
 
-// Define __dirname in ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Supabase client setup
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// PostgreSQL Pool using Supabase connection string
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL, // Use environment variable for security
+  connectionString: process.env.DATABASE_URL,
   ssl: {
     rejectUnauthorized: false
   }
 });
 
-app.use(cors());
+// Configure CORS
+app.use(cors({
+  origin: 'https://video-nu-ecru.vercel.app', // Allow requests from this domain
+  methods: ['GET', 'POST', 'DELETE'],
+  allowedHeaders: ['Content-Type'],
+}));
+
 app.use(bodyParser.json());
 app.use(helmet());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Fetch the admin credentials from Supabase's mainadmin table
 async function getMainAdminCredentials() {
   try {
     const result = await pool.query('SELECT username, password FROM mainadmin LIMIT 1');
-    if (result.rows.length === 0) {
-      console.log("No main admin credentials found.");
-      return null;
-    }
-    return result.rows[0];
+    return result.rows.length > 0 ? result.rows[0] : null;
   } catch (error) {
-    console.error("Error fetching main admin credentials:", error.message);
+    console.error("Error fetching main admin credentials:", error);
     throw new Error("Could not fetch admin credentials");
   }
 }
 
-// Fetch the video link from Supabase
 app.get('/video-link', async (req, res) => {
   try {
     const result = await pool.query('SELECT link FROM video_link LIMIT 1');
@@ -63,14 +59,8 @@ app.get('/video-link', async (req, res) => {
   }
 });
 
-// Admin authentication for login
 app.post('/login', async (req, res) => {
-  const { username, password } = req.body; // Extracting username and password
-
-  // Validate that both username and password are present
-  if (!username || !password) {
-    return res.status(400).json({ success: false, message: 'Missing username or password' });
-  }
+  const { username, password } = req.body;
 
   try {
     const mainAdmin = await getMainAdminCredentials();
@@ -91,8 +81,6 @@ app.post('/login', async (req, res) => {
   }
 });
 
-
-// Update video link with admin authentication
 app.post('/video-link', async (req, res) => {
   const { username, password, newVideoLink } = req.body;
 
@@ -106,10 +94,7 @@ app.post('/video-link', async (req, res) => {
     const isPasswordMatch = await bcrypt.compare(password, mainAdmin.password);
 
     if (username === mainAdmin.username && isPasswordMatch) {
-      await pool.query(
-        'INSERT INTO video_link (id, link) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET link = $2',
-        [1, newVideoLink]
-      );
+      await pool.query('INSERT INTO video_link (id, link) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET link = $2', [1, newVideoLink]);
       res.json({ success: true, message: 'Video link updated' });
     } else {
       res.status(400).json({ success: false, message: 'Unauthorized' });
@@ -120,7 +105,6 @@ app.post('/video-link', async (req, res) => {
   }
 });
 
-// Delete video link with admin authentication
 app.delete('/video-link', async (req, res) => {
   const { username, password } = req.body;
 
@@ -145,7 +129,6 @@ app.delete('/video-link', async (req, res) => {
   }
 });
 
-// Add a new admin (Only main admin can add new admins)
 app.post('/add-admin', async (req, res) => {
   const { mainAdminPassword, username, password } = req.body;
 
@@ -171,20 +154,16 @@ app.post('/add-admin', async (req, res) => {
   }
 });
 
-// Start the server
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
 
-// Real-time subscription to Supabase for new records in the 'video_link' table
 supabase
   .channel('video_link')
   .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'video_link' }, handleInserts)
   .subscribe();
 
-// Handle insert changes from Supabase
 function handleInserts(payload) {
   console.log('Change received!', payload);
-  // Handle the payload as needed
 }
