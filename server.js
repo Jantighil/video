@@ -41,9 +41,13 @@ app.use(express.static(path.join(__dirname, 'public')));
 async function getMainAdminCredentials() {
   try {
     const result = await pool.query('SELECT username, password FROM mainadmin LIMIT 1');
-    return result.rows.length > 0 ? result.rows[0] : null;
+    if (result.rows.length === 0) {
+      console.log("No main admin credentials found.");
+      return null;
+    }
+    return result.rows[0];
   } catch (error) {
-    console.error("Error fetching main admin credentials:", error);
+    console.error("Error fetching main admin credentials:", error.message);
     throw new Error("Could not fetch admin credentials");
   }
 }
@@ -96,7 +100,10 @@ app.post('/video-link', async (req, res) => {
     const isPasswordMatch = await bcrypt.compare(password, mainAdmin.password);
 
     if (username === mainAdmin.username && isPasswordMatch) {
-      await pool.query('INSERT INTO video_link (id, link) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET link = $2', [1, newVideoLink]);
+      await pool.query(
+        'INSERT INTO video_link (id, link) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET link = $2',
+        [1, newVideoLink]
+      );
       res.json({ success: true, message: 'Video link updated' });
     } else {
       res.status(400).json({ success: false, message: 'Unauthorized' });
