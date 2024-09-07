@@ -2,23 +2,40 @@ import express from 'express';
 import bodyParser from 'body-parser';
 import bcrypt from 'bcrypt';
 import cors from 'cors';
-import postgres from 'postgres';
+import helmet from 'helmet';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import pg from 'pg'; // Import the default export from CommonJS module
+import dotenv from 'dotenv';
+
+const { Pool } = pg; // Destructure Pool from the default export
+
+dotenv.config(); // Load environment variables from .env file
 
 const app = express();
-app.use(bodyParser.json());
-app.use(cors());
 
-// Directly connect to Supabase PostgreSQL using the connection URL
-const sql = postgres('postgresql://postgres.pvozibxqckbvbtgixjgm:07034984914Bread@aws-0-eu-central-1.pooler.supabase.com:6543/postgres', {
-    ssl: 'require',
-    prepare: false
+// PostgreSQL Pool using Supabase connection string
+const pool = new Pool({
+  connectionString: 'postgresql://postgres.pvozibxqckbvbtgixjgm:07034984914Bread@aws-0-eu-central-1.pooler.supabase.com:6543/postgres',
+  ssl: {
+    rejectUnauthorized: false
+  }
 });
+
+// Get the directory name for static files
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+app.use(cors());
+app.use(bodyParser.json());
+app.use(helmet());
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Fetch the admin credentials from Supabase's mainadmin table
 async function getMainAdminCredentials() {
     try {
-        const result = await sql`SELECT username, password FROM mainadmin LIMIT 1`;
-        return result.length > 0 ? result[0] : null;
+        const result = await pool.query('SELECT username, password FROM mainadmin LIMIT 1');
+        return result.rows.length > 0 ? result.rows[0] : null;
     } catch (error) {
         console.error("Error fetching main admin credentials:", error);
         throw new Error("Could not fetch admin credentials");
@@ -28,8 +45,8 @@ async function getMainAdminCredentials() {
 // Fetch the video link from Supabase
 app.get('/video-link', async (req, res) => {
     try {
-        const result = await sql`SELECT link FROM video_link LIMIT 1`;
-        res.json({ videoLink: result[0] ? result[0].link : '' });
+        const result = await pool.query('SELECT link FROM video_link LIMIT 1');
+        res.json({ videoLink: result.rows[0] ? result.rows[0].link : '' });
     } catch (error) {
         console.error('Error fetching video link:', error);
         res.status(500).json({ success: false, message: 'Error fetching video link' });
@@ -75,8 +92,7 @@ app.post('/video-link', async (req, res) => {
 
         if (username === mainAdmin.username && isPasswordMatch) {
             // Insert or update the video link
-            await sql`INSERT INTO video_link (id, link) VALUES (1, ${newVideoLink}) 
-                ON CONFLICT (id) DO UPDATE SET link = ${newVideoLink}`;
+            await pool.query('INSERT INTO video_link (id, link) VALUES (1, $1) ON CONFLICT (id) DO UPDATE SET link = $1', [newVideoLink]);
             res.json({ success: true, message: 'Video link updated' });
         } else {
             res.status(400).json({ success: false, message: 'Unauthorized' });
@@ -101,7 +117,7 @@ app.delete('/video-link', async (req, res) => {
         const isPasswordMatch = await bcrypt.compare(password, mainAdmin.password);
 
         if (username === mainAdmin.username && isPasswordMatch) {
-            await sql`DELETE FROM video_link WHERE id = 1`;
+            await pool.query('DELETE FROM video_link WHERE id = 1');
             res.json({ success: true, message: 'Video link deleted' });
         } else {
             res.status(400).json({ success: false, message: 'Unauthorized' });
@@ -128,7 +144,7 @@ app.post('/add-admin', async (req, res) => {
         if (isPasswordMatch) {
             // Hash the new admin password and insert into database
             const hashedPassword = await bcrypt.hash(password, 10);
-            await sql`INSERT INTO admins (username, password) VALUES (${username}, ${hashedPassword})`;
+            await pool.query('INSERT INTO admins (username, password) VALUES ($1, $2)', [username, hashedPassword]);
             res.json({ success: true, message: 'New admin added' });
         } else {
             res.status(400).json({ success: false, message: 'Main admin authentication failed' });
@@ -144,3 +160,4 @@ const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
+
