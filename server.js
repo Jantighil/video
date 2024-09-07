@@ -65,7 +65,12 @@ app.get('/video-link', async (req, res) => {
 
 // Admin authentication for login
 app.post('/login', async (req, res) => {
-  const { username, password } = req.body;
+  const { username, password } = req.body; // Extracting username and password
+
+  // Validate that both username and password are present
+  if (!username || !password) {
+    return res.status(400).json({ success: false, message: 'Missing username or password' });
+  }
 
   try {
     const mainAdmin = await getMainAdminCredentials();
@@ -85,6 +90,7 @@ app.post('/login', async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error during login' });
   }
 });
+
 
 // Update video link with admin authentication
 app.post('/video-link', async (req, res) => {
