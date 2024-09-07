@@ -2,44 +2,29 @@ import express from 'express';
 import bodyParser from 'body-parser';
 import bcrypt from 'bcrypt';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import helmet from 'helmet';
 import path from 'path';
-import { fileURLToPath } from 'url';
-import pkg from 'pg';
+import pg from 'pg'; // Import the default export from CommonJS module
 
-const { Pool } = pkg;
+const { Pool } = pg; // Destructure Pool from the default export
+import dotenv from 'dotenv';
 
-dotenv.config();  // Loads environment variables from .env file
+dotenv.config(); // Load environment variables from .env file
 
 const app = express();
-app.use(cors());
-app.use(bodyParser.json());
-app.use(helmet());
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-app.use(express.static(path.resolve(__dirname, 'public')));
 
 // PostgreSQL Pool using Supabase connection string
 const pool = new Pool({
-  connectionString: process.env.SUPABASE_DATABASE_URL,
+  connectionString: 'postgresql://postgres.pvozibxqckbvbtgixjgm:07034984914Bread@aws-0-eu-central-1.pooler.supabase.com:6543/postgres',
   ssl: {
-    rejectUnauthorized: false // Ensure this is correct for your server configuration
+    rejectUnauthorized: false
   }
 });
 
-// Test Database Connection
-async function testDatabaseConnection() {
-    try {
-        const result = await pool.query('SELECT NOW()');
-        console.log('Database connection test:', result.rows[0]);
-    } catch (error) {
-        console.error('Database connection test failed:', error);
-    }
-}
-
-testDatabaseConnection();
+app.use(cors());
+app.use(bodyParser.json());
+app.use(helmet());
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Fetch the admin credentials from Supabase's mainadmin table
 async function getMainAdminCredentials() {
@@ -102,7 +87,7 @@ app.post('/video-link', async (req, res) => {
 
         if (username === mainAdmin.username && isPasswordMatch) {
             // Insert or update the video link
-            await pool.query('INSERT INTO video_link (id, link) VALUES (1, $1) ON CONFLICT (id) DO UPDATE SET link = $1', [newVideoLink]);
+            await pool.query('INSERT INTO video_link (id, link) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET link = $2', [1, newVideoLink]);
             res.json({ success: true, message: 'Video link updated' });
         } else {
             res.status(400).json({ success: false, message: 'Unauthorized' });
@@ -127,7 +112,7 @@ app.delete('/video-link', async (req, res) => {
         const isPasswordMatch = await bcrypt.compare(password, mainAdmin.password);
 
         if (username === mainAdmin.username && isPasswordMatch) {
-            await pool.query('DELETE FROM video_link WHERE id = 1');
+            await pool.query('DELETE FROM video_link WHERE id = $1', [1]);
             res.json({ success: true, message: 'Video link deleted' });
         } else {
             res.status(400).json({ success: false, message: 'Unauthorized' });
