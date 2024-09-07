@@ -2,17 +2,14 @@ import express from 'express';
 import bodyParser from 'body-parser';
 import bcrypt from 'bcrypt';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import postgres from 'postgres';
-
-dotenv.config();  // Loads environment variables from .env file
 
 const app = express();
 app.use(bodyParser.json());
 app.use(cors());
 
-// Connect to Supabase PostgreSQL using connection URL
-const sql = postgres(process.env.SUPABASE_DATABASE_URL, {
+// Directly connect to Supabase PostgreSQL using the connection URL
+const sql = postgres('postgresql://postgres.pvozibxqckbvbtgixjgm:07034984914Bread@aws-0-eu-central-1.pooler.supabase.com:6543/postgres', {
     ssl: 'require',
     prepare: false
 });
