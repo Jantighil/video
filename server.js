@@ -58,28 +58,34 @@ app.get('/video-link', async (req, res) => {
   }
 });
 
-// Admin authentication for login
 app.post('/login', async (req, res) => {
-  const { username, password } = req.body;
+    const { username, password } = req.body;
 
-  try {
-    const mainAdmin = await getMainAdminCredentials();
+    console.log('Received login request:', { username, password });
 
-    if (!mainAdmin) {
-      return res.status(500).json({ success: false, message: 'Main admin credentials not found' });
+    try {
+        const mainAdmin = await getMainAdminCredentials();
+
+        if (!mainAdmin) {
+            console.error("Main admin credentials not found");
+            return res.status(500).json({ success: false, message: 'Main admin credentials not found' });
+        }
+
+        const isPasswordMatch = await bcrypt.compare(password, mainAdmin.password);
+
+        if (username === mainAdmin.username && isPasswordMatch) {
+            console.log('Login successful');
+            return res.json({ success: true, message: 'Login successful' });
+        } else {
+            console.error('Invalid username or password');
+            return res.status(400).json({ success: false, message: 'Invalid username or password' });
+        }
+    } catch (error) {
+        console.error('Error during login:', error);
+        res.status(500).json({ success: false, message: 'Server error during login' });
     }
-
-    const isPasswordMatch = await bcrypt.compare(password, mainAdmin.password);
-    if (username === mainAdmin.username && isPasswordMatch) {
-      return res.json({ success: true, message: 'Login successful' });
-    } else {
-      return res.status(400).json({ success: false, message: 'Invalid username or password' });
-    }
-  } catch (error) {
-    console.error('Error during login:', error);
-    res.status(500).json({ success: false, message: 'Server error during login' });
-  }
 });
+
 
 // Update video link with admin authentication
 app.post('/video-link', async (req, res) => {
