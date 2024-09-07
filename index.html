@@ -96,6 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
         })
         .catch(error => {
             console.error('Error fetching video link:', error);
+            alert('Failed to fetch video link');
         });
 });
 
@@ -106,14 +107,11 @@ async function authenticateAdmin() {
     try {
         const response = await fetch('https://video-1-j54p.onrender.com/login', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, password })
         });
 
         const data = await response.json();
-
         if (data.success) {
             document.getElementById('adminPanel').style.display = 'block';
             document.getElementById('loginForm').style.display = 'none';
@@ -121,7 +119,7 @@ async function authenticateAdmin() {
             alert(data.message || "Authentication failed!");
         }
     } catch (error) {
-        console.error('Error:', error);
+        console.error('Error during authentication:', error);
         alert('Error during authentication');
     }
 }
@@ -141,14 +139,8 @@ async function loadVideo() {
     try {
         const response = await fetch('https://video-1-j54p.onrender.com/video-link', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                username,
-                password,
-                newVideoLink
-            })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password, newVideoLink })
         });
 
         const result = await response.json();
@@ -158,7 +150,7 @@ async function loadVideo() {
             alert(result.message || "Failed to update video link!");
         }
     } catch (error) {
-        console.error('Error:', error);
+        console.error('Error during video link update:', error);
         alert('Error during video link update');
     }
 }
@@ -170,62 +162,22 @@ async function deleteVideo() {
     try {
         const response = await fetch('https://video-1-j54p.onrender.com/video-link', {
             method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                username,
-                password
-            })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
         });
 
         const result = await response.json();
         if (result.success) {
             document.getElementById('videoFrame').src = '';
+            alert('Video link deleted successfully.');
         } else {
             alert(result.message || "Failed to delete video link!");
         }
     } catch (error) {
-        console.error('Error:', error);
+        console.error('Error during video link deletion:', error);
         alert('Error during video link deletion');
     }
 }
-
-function showAddAdminPanel() {
-    document.getElementById('addAdminPanel').style.display = 'block';
-}
-
-async function addAdmin() {
-    const mainAdminPassword = document.getElementById('mainAdminPassword').value;
-    const newAdminUsername = document.getElementById('newAdminUsername').value;
-    const newAdminPassword = document.getElementById('newAdminPassword').value;
-
-    try {
-        const response = await fetch('https://video-1-j54p.onrender.com/add-admin', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                mainAdminPassword,
-                username: newAdminUsername,
-                password: newAdminPassword
-            })
-        });
-
-        const result = await response.json();
-        if (result.success) {
-            alert("New admin added successfully!");
-            document.getElementById('addAdminPanel').style.display = 'none';
-        } else {
-            alert(result.message || "Failed to add new admin!");
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        alert('Error during adding new admin');
-    }
-}
-
 
 </script>
 </body>
