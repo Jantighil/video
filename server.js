@@ -3,7 +3,7 @@ import bodyParser from 'body-parser';
 import bcrypt from 'bcrypt';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { Pool } from 'pg'; // Correctly import Pool from pg
+import pg from 'pg'; // Import pg package
 
 dotenv.config();  // Loads environment variables from .env file
 
@@ -13,6 +13,8 @@ app.use(cors());
 app.use(express.static('public'));
 
 // PostgreSQL Pool using Supabase connection string
+const { Pool } = pg; // Destructure Pool from the pg package
+
 const pool = new Pool({
     connectionString: 'postgresql://postgres.pvozibxqckbvbtgixjgm:07034984914Bread@aws-0-eu-central-1.pooler.supabase.com:6543/postgres',
     ssl: {
