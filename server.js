@@ -3,24 +3,39 @@ import bodyParser from 'body-parser';
 import bcrypt from 'bcrypt';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import pg from 'pg'; // Import pg package
+import pkg from 'pg'; // Correct import for pg with ESM
+import helmet from 'helmet';
+import path from 'path';
 
 dotenv.config();  // Loads environment variables from .env file
 
+const { Pool } = pkg; // Correctly import Pool from pg
+
 const app = express();
-app.use(bodyParser.json());
 app.use(cors());
-app.use(express.static('public'));
+app.use(bodyParser.json());
+app.use(helmet());
+app.use(express.static(path.join(path.resolve(), 'public')));
 
 // PostgreSQL Pool using Supabase connection string
-const { Pool } = pg; // Destructure Pool from the pg package
-
 const pool = new Pool({
-    connectionString: 'postgresql://postgres.pvozibxqckbvbtgixjgm:07034984914Bread@aws-0-eu-central-1.pooler.supabase.com:6543/postgres',
-    ssl: {
-        rejectUnauthorized: false
-    }
+  connectionString: process.env.SUPABASE_DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false
+  }
 });
+
+// Test Database Connection
+async function testDatabaseConnection() {
+    try {
+        const result = await pool.query('SELECT NOW()');
+        console.log('Database connection test:', result.rows[0]);
+    } catch (error) {
+        console.error('Database connection test failed:', error);
+    }
+}
+
+testDatabaseConnection(); // Call to test connection
 
 // Fetch the admin credentials from Supabase's mainadmin table
 async function getMainAdminCredentials() {
@@ -47,24 +62,24 @@ app.get('/video-link', async (req, res) => {
 // Admin authentication for login
 app.post('/login', async (req, res) => {
     const { username, password } = req.body;
-    
+
     try {
         const mainAdmin = await getMainAdminCredentials();
-        
+
         if (!mainAdmin) {
             return res.status(500).json({ success: false, message: 'Main admin credentials not found' });
         }
 
-        // Compare input username/password with DB data
         const isPasswordMatch = await bcrypt.compare(password, mainAdmin.password);
+
         if (username === mainAdmin.username && isPasswordMatch) {
             return res.json({ success: true, message: 'Login successful' });
         } else {
             return res.status(400).json({ success: false, message: 'Invalid username or password' });
         }
     } catch (error) {
-        console.error('Error during login:', error);
-        res.status(500).json({ success: false, message: 'Server error during login' });
+        console.error('Error during login:', error); // Log detailed error
+        res.status(500).json({ success: false, message: 'Server error during login', error: error.message });
     }
 });
 
@@ -83,14 +98,15 @@ app.post('/video-link', async (req, res) => {
 
         if (username === mainAdmin.username && isPasswordMatch) {
             // Insert or update the video link
-            await pool.query('INSERT INTO video_link (id, link) VALUES (1, $1) ON CONFLICT (id) DO UPDATE SET link = $1', [newVideoLink]);
+            await pool.query(`INSERT INTO video_link (id, link) VALUES (1, $1) 
+                ON CONFLICT (id) DO UPDATE SET link = $1`, [newVideoLink]);
             res.json({ success: true, message: 'Video link updated' });
         } else {
             res.status(400).json({ success: false, message: 'Unauthorized' });
         }
     } catch (error) {
         console.error('Error updating video link:', error);
-        res.status(500).json({ success: false, message: 'Error updating video link' });
+        res.status(500).json({ success: false, message: 'Error updating video link', error: error.message });
     }
 });
 
@@ -115,7 +131,7 @@ app.delete('/video-link', async (req, res) => {
         }
     } catch (error) {
         console.error('Error deleting video link:', error);
-        res.status(500).json({ success: false, message: 'Error deleting video link' });
+        res.status(500).json({ success: false, message: 'Error deleting video link', error: error.message });
     }
 });
 
@@ -135,10 +151,7 @@ app.post('/add-admin', async (req, res) => {
         if (isPasswordMatch) {
             // Hash the new admin password and insert into database
             const hashedPassword = await bcrypt.hash(password, 10);
-
-            // Insert new admin into the database
             await pool.query('INSERT INTO admins (username, password) VALUES ($1, $2)', [username, hashedPassword]);
-
             res.json({ success: true, message: 'New admin added' });
         } else {
             res.status(400).json({ success: false, message: 'Main admin authentication failed' });
