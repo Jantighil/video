@@ -3,25 +3,29 @@ import bodyParser from 'body-parser';
 import bcrypt from 'bcrypt';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import pkg from 'pg'; // Correct import for pg with ESM
 import helmet from 'helmet';
 import path from 'path';
+import { fileURLToPath } from 'url';
+import pkg from 'pg';
+
+const { Pool } = pkg;
 
 dotenv.config();  // Loads environment variables from .env file
-
-const { Pool } = pkg; // Correctly import Pool from pg
 
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 app.use(helmet());
-app.use(express.static(path.resolve('public')));
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+app.use(express.static(path.resolve(__dirname, 'public')));
 
 // PostgreSQL Pool using Supabase connection string
 const pool = new Pool({
   connectionString: process.env.SUPABASE_DATABASE_URL,
   ssl: {
-    rejectUnauthorized: false
+    rejectUnauthorized: false // Ensure this is correct for your server configuration
   }
 });
 
@@ -35,7 +39,7 @@ async function testDatabaseConnection() {
     }
 }
 
-testDatabaseConnection(); // Call to test connection
+testDatabaseConnection();
 
 // Fetch the admin credentials from Supabase's mainadmin table
 async function getMainAdminCredentials() {
@@ -55,31 +59,31 @@ app.get('/video-link', async (req, res) => {
         res.json({ videoLink: result.rows[0] ? result.rows[0].link : '' });
     } catch (error) {
         console.error('Error fetching video link:', error);
-        res.status(500).json({ success: false, message: 'Error fetching video link', error: error.message });
+        res.status(500).json({ success: false, message: 'Error fetching video link' });
     }
 });
 
 // Admin authentication for login
 app.post('/login', async (req, res) => {
     const { username, password } = req.body;
-
+    
     try {
         const mainAdmin = await getMainAdminCredentials();
-
+        
         if (!mainAdmin) {
             return res.status(500).json({ success: false, message: 'Main admin credentials not found' });
         }
 
+        // Compare input username/password with DB data
         const isPasswordMatch = await bcrypt.compare(password, mainAdmin.password);
-
         if (username === mainAdmin.username && isPasswordMatch) {
             return res.json({ success: true, message: 'Login successful' });
         } else {
             return res.status(400).json({ success: false, message: 'Invalid username or password' });
         }
     } catch (error) {
-        console.error('Error during login:', error); // Log detailed error
-        res.status(500).json({ success: false, message: 'Server error during login', error: error.message });
+        console.error('Error during login:', error);
+        res.status(500).json({ success: false, message: 'Server error during login' });
     }
 });
 
@@ -98,15 +102,14 @@ app.post('/video-link', async (req, res) => {
 
         if (username === mainAdmin.username && isPasswordMatch) {
             // Insert or update the video link
-            await pool.query(`INSERT INTO video_link (id, link) VALUES (1, $1) 
-                ON CONFLICT (id) DO UPDATE SET link = $1`, [newVideoLink]);
+            await pool.query('INSERT INTO video_link (id, link) VALUES (1, $1) ON CONFLICT (id) DO UPDATE SET link = $1', [newVideoLink]);
             res.json({ success: true, message: 'Video link updated' });
         } else {
             res.status(400).json({ success: false, message: 'Unauthorized' });
         }
     } catch (error) {
         console.error('Error updating video link:', error);
-        res.status(500).json({ success: false, message: 'Error updating video link', error: error.message });
+        res.status(500).json({ success: false, message: 'Error updating video link' });
     }
 });
 
@@ -131,7 +134,7 @@ app.delete('/video-link', async (req, res) => {
         }
     } catch (error) {
         console.error('Error deleting video link:', error);
-        res.status(500).json({ success: false, message: 'Error deleting video link', error: error.message });
+        res.status(500).json({ success: false, message: 'Error deleting video link' });
     }
 });
 
@@ -158,7 +161,7 @@ app.post('/add-admin', async (req, res) => {
         }
     } catch (error) {
         console.error('Error adding new admin:', error);
-        res.status(500).json({ success: false, message: 'Error adding new admin', error: error.message });
+        res.status(500).json({ success: false, message: 'Error adding new admin' });
     }
 });
 
