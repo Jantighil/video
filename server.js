@@ -15,7 +15,7 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 app.use(helmet());
-app.use(express.static(path.join(path.resolve(), 'public')));
+app.use(express.static(path.resolve('public')));
 
 // PostgreSQL Pool using Supabase connection string
 const pool = new Pool({
@@ -55,7 +55,7 @@ app.get('/video-link', async (req, res) => {
         res.json({ videoLink: result.rows[0] ? result.rows[0].link : '' });
     } catch (error) {
         console.error('Error fetching video link:', error);
-        res.status(500).json({ success: false, message: 'Error fetching video link' });
+        res.status(500).json({ success: false, message: 'Error fetching video link', error: error.message });
     }
 });
 
