@@ -5,6 +5,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import path from 'path';
 import pg from 'pg'; // Import the default export from CommonJS module
+import { fileURLToPath } from 'url'; // Import for defining __dirname in ES modules
 
 const { Pool } = pg; // Destructure Pool from the default export
 import dotenv from 'dotenv';
@@ -12,6 +13,10 @@ import dotenv from 'dotenv';
 dotenv.config(); // Load environment variables from .env file
 
 const app = express();
+
+// Define __dirname in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // PostgreSQL Pool using Supabase connection string
 const pool = new Pool({
