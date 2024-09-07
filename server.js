@@ -6,49 +6,38 @@ import helmet from 'helmet';
 import path from 'path';
 import pg from 'pg'; // Import the default export from CommonJS module
 import { fileURLToPath } from 'url'; // Import for defining __dirname in ES modules
+
+const { Pool } = pg; // Destructure Pool from the default export
 import dotenv from 'dotenv';
 
 dotenv.config(); // Load environment variables from .env file
+
+const app = express();
 
 // Define __dirname in ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const { Pool } = pg; // Destructure Pool from the default export
-
-// Use environment variables for PostgreSQL connection string
+// PostgreSQL Pool using Supabase connection string
 const pool = new Pool({
-  connectionString: process.env.SUPABASE_URL,
-  ssl: { rejectUnauthorized: false }
+  connectionString: process.env.SUPABASE_URL, // Store this in .env for security
+  ssl: {
+    rejectUnauthorized: false
+  }
 });
 
-const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 app.use(helmet());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Function to check database connection
-app.get('/test-connection', async (req, res) => {
-    try {
-        const result = await pool.query('SELECT NOW()');
-        res.json({ success: true, message: 'Connection successful', time: result.rows[0].now });
-    } catch (error) {
-        console.error('Error testing connection:', error.message);
-        res.status(500).json({ success: false, message: 'Connection failed' });
-    }
-});
-
-// Fetch the admin credentials from Supabase's mainadmin table
+// Fetch the main admin credentials from Supabase's mainadmin table
 async function getMainAdminCredentials() {
     try {
         const result = await pool.query('SELECT username, password FROM mainadmin LIMIT 1');
-        if (result.rows.length === 0) {
-            console.error('No main admin found');
-        }
         return result.rows.length > 0 ? result.rows[0] : null;
     } catch (error) {
-        console.error("Error fetching main admin credentials:", error.message);
+        console.error("Error fetching main admin credentials:", error);
         throw new Error("Could not fetch admin credentials");
     }
 }
@@ -59,7 +48,7 @@ app.get('/video-link', async (req, res) => {
         const result = await pool.query('SELECT link FROM video_link LIMIT 1');
         res.json({ videoLink: result.rows[0] ? result.rows[0].link : '' });
     } catch (error) {
-        console.error('Error fetching video link:', error.message);
+        console.error('Error fetching video link:', error);
         res.status(500).json({ success: false, message: 'Error fetching video link' });
     }
 });
@@ -83,7 +72,7 @@ app.post('/login', async (req, res) => {
             return res.status(400).json({ success: false, message: 'Invalid username or password' });
         }
     } catch (error) {
-        console.error('Error during login:', error.message);
+        console.error('Error during login:', error);
         res.status(500).json({ success: false, message: 'Server error during login' });
     }
 });
@@ -109,7 +98,7 @@ app.post('/video-link', async (req, res) => {
             res.status(400).json({ success: false, message: 'Unauthorized' });
         }
     } catch (error) {
-        console.error('Error updating video link:', error.message);
+        console.error('Error updating video link:', error);
         res.status(500).json({ success: false, message: 'Error updating video link' });
     }
 });
@@ -134,7 +123,7 @@ app.delete('/video-link', async (req, res) => {
             res.status(400).json({ success: false, message: 'Unauthorized' });
         }
     } catch (error) {
-        console.error('Error deleting video link:', error.message);
+        console.error('Error deleting video link:', error);
         res.status(500).json({ success: false, message: 'Error deleting video link' });
     }
 });
@@ -161,7 +150,7 @@ app.post('/add-admin', async (req, res) => {
             res.status(400).json({ success: false, message: 'Main admin authentication failed' });
         }
     } catch (error) {
-        console.error('Error adding new admin:', error.message);
+        console.error('Error adding new admin:', error);
         res.status(500).json({ success: false, message: 'Error adding new admin' });
     }
 });
@@ -171,3 +160,4 @@ const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
+
